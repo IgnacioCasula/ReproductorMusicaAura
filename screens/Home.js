@@ -26,7 +26,7 @@ export default function Home({ navigation }) {
           source={require('../assets/logo.png')} 
           style={styles.logo} 
         />
-        <Text style={styles.appName}>SoundWave</Text>
+        <Text style={styles.appName}>Aura</Text>
         <Text style={styles.subtitle}>Tu música, en cualquier lugar</Text>
       </View>
 

@@ -50,7 +50,7 @@ export default function Login({ navigation }) {
           source={require('../assets/logo.png')} 
           style={styles.logo} 
         />
-        <Text style={styles.appName}>SoundWave</Text>
+        <Text style={styles.appName}>Aura</Text>
         <Text style={styles.subtitle}>Inicia sesión en tu cuenta</Text>
       </View>
 
