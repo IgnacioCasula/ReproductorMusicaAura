@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  ScrollView,
-  ActivityIndicator 
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, 
+  ScrollView, ActivityIndicator 
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -21,82 +15,78 @@ import { FontAwesome } from '@expo/vector-icons';
 const AddEditSong = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { song } = route.params || {}; // Si estamos editando, recibimos la canción
-  const [audioFile, setAudioFile] = useState(song?.audioFile || null);
+  const { song } = route.params || {};
+  
+  // ✅ ESTADO CORREGIDO
+  const [audioFile, setAudioFile] = useState(
+    song ? { 
+      uri: song.audioFile, 
+      name: song.fileName || 'Archivo existente',
+      size: song.fileSize || 0,
+      type: song.fileType || 'audio/mpeg'
+    } : null
+  );
+  
   const [loading, setLoading] = useState(false);
 
   const { control, handleSubmit, formState: { errors }, setValue } = useForm({
-  defaultValues: {
-    title: song?.title || '',
-    artist: song?.artist || '',
-    album: song?.album || '',
-    genre: song?.genre || '',
-    duration: song?.duration || '',
-  }
-});
+    defaultValues: {
+      title: song?.title || '',
+      artist: song?.artist || '',
+      album: song?.album || '',
+      genre: song?.genre || '',
+      duration: song?.duration || '',
+    }
+  });
 
-  // 🔥 FUNCIÓN CORREGIDA PARA SELECCIONAR ARCHIVO DE AUDIO
-const pickAudio = async () => {
-  try {
-    console.log("Iniciando selección de archivo...");
-    
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'audio/*',
-      copyToCacheDirectory: true,
-      multiple: false,
-    });
-    
-    console.log("Resultado del picker:", result);
-    
-    if (result.canceled === false && result.assets && result.assets.length > 0) {
-      const file = result.assets[0];
-      console.log("Archivo seleccionado:", file);
-      
-      setAudioFile({
-        uri: file.uri,
-        name: file.name,
-        size: file.size,
-        type: file.mimeType,
+  const pickAudio = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+        multiple: false,
       });
       
-      // Obtener duración del audio - VERSIÓN CORREGIDA
-      try {
-        console.log("Cargando audio para obtener duración...");
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: file.uri },
-          { shouldPlay: false }
-        );
+      if (result.canceled === false && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
         
-        const status = await sound.getStatusAsync();
-        console.log("Status del audio:", status);
+        // ✅ ESTRUCTURA CONSISTENTE
+        setAudioFile({
+          uri: file.uri,
+          name: file.name,
+          size: file.size,
+          type: file.mimeType,
+        });
         
-        if (status.isLoaded) {
-          const minutes = Math.floor(status.durationMillis / 60000);
-          const seconds = Math.floor((status.durationMillis % 60000) / 1000);
-          const duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        // Obtener duración
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: file.uri },
+            { shouldPlay: false }
+          );
           
-          console.log("Duración calculada:", duration);
+          const status = await sound.getStatusAsync();
           
-          // ✅ SOLUCIÓN CORREGIDA: Usar setValue en lugar de control._fields
-          setValue('duration', duration);
+          if (status.isLoaded) {
+            const minutes = Math.floor(status.durationMillis / 60000);
+            const seconds = Math.floor((status.durationMillis % 60000) / 1000);
+            const duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            setValue('duration', duration);
+          }
+          
+          await sound.unloadAsync();
+        } catch (audioError) {
+          console.error('Error obteniendo duración:', audioError);
+          setValue('duration', '0:00');
         }
-        
-        await sound.unloadAsync();
-      } catch (audioError) {
-        console.error('Error obteniendo duración:', audioError);
-        // ✅ SOLUCIÓN CORREGIDA
-        setValue('duration', '0:00');
       }
-    } else {
-      console.log("Selección cancelada por el usuario");
+    } catch (error) {
+      console.error('Error seleccionando archivo:', error);
+      Alert.alert('Error', 'No se pudo seleccionar el archivo de audio');
     }
-  } catch (error) {
-    console.error('Error seleccionando archivo:', error);
-    Alert.alert('Error', 'No se pudo seleccionar el archivo de audio: ' + error.message);
-  }
-};
+  };
 
-  // 🔥 FUNCIÓN PARA GUARDAR CANCIÓN
   const onSubmit = async (data) => {
     if (!audioFile) {
       Alert.alert('Error', 'Debes seleccionar un archivo de audio');
@@ -106,24 +96,30 @@ const pickAudio = async () => {
     setLoading(true);
 
     try {
+      // ✅ DATOS CORREGIDOS - Manejar ambos casos (nuevo y edición)
       const songData = {
         title: data.title,
         artist: data.artist,
         album: data.album,
         genre: data.genre,
         duration: data.duration,
-        audioFile: audioFile.uri, // URI local del archivo
-        fileName: audioFile.name,
-        userId: auth.currentUser.uid, // Asociar canción al usuario
-        createdAt: new Date(),
+        audioFile: audioFile.uri || audioFile, // ✅ Compatible con string y objeto
+        fileName: audioFile.name || song?.fileName || 'audio.mp3',
+        fileSize: audioFile.size || song?.fileSize || 0,
+        fileType: audioFile.type || song?.fileType || 'audio/mpeg',
+        userId: auth.currentUser.uid,
+        createdAt: song ? song.createdAt : new Date(),
+        updatedAt: new Date(), // ✅ Campo nuevo para tracking
       };
 
+      console.log("Guardando canción:", songData);
+
       if (song) {
-        // 🔄 ACTUALIZAR canción existente
+        // 🔄 ACTUALIZAR
         await updateDoc(doc(db, 'songs', song.id), songData);
         Alert.alert('Éxito', 'Canción actualizada correctamente');
       } else {
-        // ➕ CREAR nueva canción
+        // ➕ CREAR
         await addDoc(collection(db, 'songs'), songData);
         Alert.alert('Éxito', 'Canción agregada correctamente');
       }
@@ -131,17 +127,14 @@ const pickAudio = async () => {
       navigation.goBack();
     } catch (error) {
       console.error('Error guardando canción:', error);
-      Alert.alert('Error', 'No se pudo guardar la canción');
+      Alert.alert('Error', `No se pudo guardar la canción: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1a2e', '#16213e', '#0f3460']}
-      style={styles.container}
-    >
+    <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>
           {song ? 'Editar Canción' : 'Agregar Nueva Canción'}
@@ -219,7 +212,7 @@ const pickAudio = async () => {
           )}
         />
 
-        {/* DURACIÓN (se llena automáticamente) */}
+        {/* DURACIÓN */}
         <Text style={styles.label}>Duración</Text>
         <Controller
           control={control}
@@ -239,18 +232,16 @@ const pickAudio = async () => {
 
         {/* SELECTOR DE ARCHIVO */}
         <View style={styles.fileSection}>
-        <Text style={styles.label}>Archivo de Audio *</Text>
-        <TouchableOpacity style={styles.audioButton} onPress={pickAudio}>
-          <FontAwesome name="music" size={20} color="#8a2be2" style={styles.audioIcon} />
-          <Text style={styles.audioButtonText}>
-            {audioFile ? `✅ ${audioFile.name}` : 'Seleccionar archivo MP3'}
-          </Text>
-        </TouchableOpacity>
-        {!audioFile && (
-          <Text style={styles.hintText}>
-            Formatos soportados: MP3, WAV, M4A
-          </Text>
-        )}
+          <Text style={styles.label}>Archivo de Audio *</Text>
+          <TouchableOpacity style={styles.audioButton} onPress={pickAudio}>
+            <FontAwesome name="music" size={20} color="#8a2be2" style={styles.audioIcon} />
+            <Text style={styles.audioButtonText}>
+              {audioFile ? `✅ ${audioFile.name}` : 'Seleccionar archivo MP3'}
+            </Text>
+          </TouchableOpacity>
+          {!audioFile && (
+            <Text style={styles.hintText}>Formatos soportados: MP3, WAV, M4A</Text>
+          )}
         </View>
 
         {/* BOTÓN GUARDAR */}
@@ -310,35 +301,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     marginLeft: 5,
   },
-  audioButton: {
-    backgroundColor: 'rgba(138, 43, 226, 0.3)',
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#8a2be2',
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  audioButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  saveButton: {
-    backgroundColor: '#8a2be2',
-    padding: 16,
-    borderRadius: 25,
-    marginTop: 10,
-  },
-  disabledButton: {
-    backgroundColor: '#5a189a',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
   fileSection: {
     marginBottom: 20,
   },
@@ -365,6 +327,21 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginLeft: 5,
     fontStyle: 'italic',
+  },
+  saveButton: {
+    backgroundColor: '#8a2be2',
+    padding: 16,
+    borderRadius: 25,
+    marginTop: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#5a189a',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
