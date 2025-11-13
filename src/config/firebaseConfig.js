@@ -1,18 +1,24 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDCPkAVFTX3n_952CpJgDvgG4c5-SuHi_0",
-  authDomain: "nombreproyecto001.firebaseapp.com",
-  projectId: "nombreproyecto001",
-  storageBucket: "nombreproyecto001.firebasestorage.app",
-  messagingSenderId: "859819502166",
-  appId: "1:859819502166:web:89899c7aba0fa03c48a9f7"
+  apiKey: "AIzaSyCWikOBRmsKZWN02nBYKxKegNh-UzgX26o",
+  authDomain: "nombreproyecto01.firebaseapp.com",
+  projectId: "nombreproyecto01",
+  storageBucket: "nombreproyecto01.firebasestorage.app",
+  messagingSenderId: "1082039109883",
+  appId: "1:1082039109883:web:2377f4a83529084cbb885e"
 };
 
 const app = initializeApp(firebaseConfig);
 
-const auth = getAuth(app);
+// ✅ CONFIGURACIÓN CORRECTA CON PERSISTENCIA
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
 
-export { auth };
+const db = getFirestore(app);
 
+export { auth, db };

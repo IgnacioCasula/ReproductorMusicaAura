@@ -5,6 +5,7 @@ import { auth } from '../src/config/firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 
+
 export default function SignUp({ navigation }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -37,7 +38,7 @@ export default function SignUp({ navigation }) {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       Alert.alert("Registro exitoso", "Usuario registrado con éxito.");
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); 
+      
     } catch (error) {
       let errorMessage = "Hubo un problema al registrar el usuario.";
       switch (error.code) {
