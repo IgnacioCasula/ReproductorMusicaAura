@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, TouchableOpacity, StyleSheet, FlatList, 
   Alert, ActivityIndicator 
@@ -10,13 +10,25 @@ import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
 
+// 🔥 VARIABLES GLOBALES PARA CONTROL CENTRALIZADO
+let globalSoundInstance = null;
+let globalPlaybackStatus = {
+  isPlaying: false,
+  currentSong: null,
+  currentIndex: -1
+};
+
 const Home = ({ navigation }) => {
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sound, setSound] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentSong, setCurrentSong] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(-1);
+  
+  // 🔥 ESTADO LOCAL SINCRONIZADO CON GLOBAL
+  const [isPlaying, setIsPlaying] = useState(globalPlaybackStatus.isPlaying);
+  const [currentSong, setCurrentSong] = useState(globalPlaybackStatus.currentSong);
+  const [currentIndex, setCurrentIndex] = useState(globalPlaybackStatus.currentIndex);
+
+  // 🔥 REF PARA EVITAR LOOPS
+  const isPlayingRef = useRef(false);
 
   // CARGAR CANCIONES DEL USUARIO
   useEffect(() => {
@@ -39,29 +51,57 @@ const Home = ({ navigation }) => {
     }
   }, []);
 
-  // CALLBACK PARA ACTUALIZACIONES DE REPRODUCCIÓN
+  // 🔥 FUNCIÓN PARA DETENER COMPLETAMENTE LA REPRODUCCIÓN
+  const stopAllPlayback = async () => {
+    console.log("🔇 Deteniendo toda reproducción...");
+    
+    if (globalSoundInstance) {
+      try {
+        // Detener y liberar completamente el sonido
+        await globalSoundInstance.stopAsync();
+        await globalSoundInstance.unloadAsync();
+        globalSoundInstance = null;
+      } catch (error) {
+        console.log("Error deteniendo sonido:", error);
+      }
+    }
+    
+    // Resetear estado global
+    globalPlaybackStatus = {
+      isPlaying: false,
+      currentSong: null,
+      currentIndex: -1
+    };
+    
+    // Resetear estado local
+    setIsPlaying(false);
+    setCurrentSong(null);
+    setCurrentIndex(-1);
+    isPlayingRef.current = false;
+  };
+
+  // 🔥 CALLBACK MEJORADO PARA REPRODUCCIÓN
   const onPlaybackStatusUpdate = (status) => {
-    if (status.didJustFinish) {
-      setIsPlaying(false);
+    if (status.didJustFinish && !isPlayingRef.current) {
+      console.log("🎵 Canción terminó naturalmente");
+      isPlayingRef.current = true;
       
+      // Pequeño delay antes de reproducir la siguiente
       setTimeout(() => {
         playNext();
-      }, 100);
+      }, 500);
     }
   };
 
-  // FUNCIÓN PLAYSONG
+  // 🔥 FUNCIÓN PLAYSONG MEJORADA - DETIENE TODO ANTES DE REPRODUCIR
   const playSong = async (song, index) => {
     try {
-      // Limpiar sonido anterior si existe
-      if (sound) {
-        try {
-          await sound.unloadAsync();
-        } catch (error) {
-          console.log("Error limpiando sonido anterior:", error);
-        }
-      }
+      console.log(`🎵 Intentando reproducir: ${song.title}`);
+      
+      // 🔇 DETENER CUALQUIER REPRODUCCIÓN ACTUAL PRIMERO
+      await stopAllPlayback();
 
+      // 🎵 CREAR NUEVA INSTANCIA DE SONIDO
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: song.audioFile },
         { 
@@ -71,59 +111,64 @@ const Home = ({ navigation }) => {
         onPlaybackStatusUpdate
       );
       
-      setSound(newSound);
+      // ✅ ACTUALIZAR ESTADO GLOBAL
+      globalSoundInstance = newSound;
+      globalPlaybackStatus = {
+        isPlaying: true,
+        currentSong: song,
+        currentIndex: index
+      };
+      
+      // ✅ ACTUALIZAR ESTADO LOCAL
       setCurrentSong(song);
       setCurrentIndex(index);
       setIsPlaying(true);
+      isPlayingRef.current = false;
+      
+      console.log(`✅ Reproduciendo: ${song.title}`);
       
     } catch (error) {
-      console.error('Error reproduciendo canción:', error);
+      console.error('❌ Error reproduciendo canción:', error);
       Alert.alert('Error', 'No se pudo reproducir la canción');
+      await stopAllPlayback(); // Limpiar en caso de error
     }
   };
 
-  // PAUSAR CANCIÓN
+  // 🔥 PAUSAR CANCIÓN
   const pauseSong = async () => {
-    if (sound) {
+    if (globalSoundInstance) {
       try {
-        await sound.pauseAsync();
+        await globalSoundInstance.pauseAsync();
+        globalPlaybackStatus.isPlaying = false;
         setIsPlaying(false);
+        console.log("⏸️ Canción pausada");
       } catch (error) {
         console.log("Error pausando:", error);
       }
     }
   };
 
-  // REANUDAR CANCIÓN
+  // 🔥 REANUDAR CANCIÓN
   const resumeSong = async () => {
-    if (sound) {
+    if (globalSoundInstance) {
       try {
-        await sound.playAsync();
+        await globalSoundInstance.playAsync();
+        globalPlaybackStatus.isPlaying = true;
         setIsPlaying(true);
+        console.log("▶️ Canción reanudada");
       } catch (error) {
         console.log("Error reanudando:", error);
       }
     }
   };
 
-  // DETENER CANCIÓN
-  const stopSong = async () => {
-    if (sound) {
-      try {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-      } catch (error) {
-        console.log("Error deteniendo:", error);
-      } finally {
-        setSound(null);
-        setIsPlaying(false);
-        setCurrentSong(null);
-        setCurrentIndex(-1);
-      }
-    }
+  // 🔥 DETENER CANCIÓN ACTUAL
+  const stopCurrentSong = async () => {
+    await stopAllPlayback();
+    console.log("⏹️ Canción detenida");
   };
 
-  // CANCIÓN ANTERIOR
+  // 🔥 CANCIÓN ANTERIOR
   const playPrevious = async () => {
     if (songs.length === 0) return;
     
@@ -134,13 +179,15 @@ const Home = ({ navigation }) => {
       newIndex = currentIndex > 0 ? currentIndex - 1 : songs.length - 1;
     }
     
-    await playSong(songs[newIndex], newIndex);
+    if (songs[newIndex]) {
+      await playSong(songs[newIndex], newIndex);
+    }
   };
 
-  // SIGUIENTE CANCIÓN
+  // 🔥 SIGUIENTE CANCIÓN
   const playNext = async () => {
     if (songs.length === 0) {
-      await stopSong();
+      await stopAllPlayback();
       return;
     }
     
@@ -151,11 +198,15 @@ const Home = ({ navigation }) => {
       newIndex = currentIndex < songs.length - 1 ? currentIndex + 1 : 0;
     }
     
-    await playSong(songs[newIndex], newIndex);
+    if (songs[newIndex]) {
+      await playSong(songs[newIndex], newIndex);
+    } else {
+      await stopAllPlayback();
+    }
   };
 
-  // ELIMINAR CANCIÓN
-  const deleteSong = (song) => {
+  // 🔥 ELIMINAR CANCIÓN
+  const deleteSong = async (song) => {
     Alert.alert(
       'Eliminar Canción',
       `¿Estás seguro de eliminar "${song.title}"?`,
@@ -166,8 +217,9 @@ const Home = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (currentSong && currentSong.id === song.id) {
-                await stopSong();
+              // Si la canción a eliminar es la que se está reproduciendo, detenerla
+              if (globalPlaybackStatus.currentSong?.id === song.id) {
+                await stopAllPlayback();
               }
               
               await deleteDoc(doc(db, 'songs', song.id));
@@ -182,10 +234,10 @@ const Home = ({ navigation }) => {
     );
   };
 
-  // CERRAR SESIÓN
+  // 🔥 CERRAR SESIÓN - DETENER TODO ANTES
   const handleLogOut = async () => {
     try {
-      await stopSong();
+      await stopAllPlayback();
       await signOut(auth);
       Alert.alert("Sesión cerrada", "Has cerrado sesión correctamente.");
     } catch (error) {
@@ -194,14 +246,26 @@ const Home = ({ navigation }) => {
     }
   };
 
-  // CLEANUP AL DESMONTAR EL COMPONENTE
+  // 🔥 SINCRONIZAR AL VOLVER A HOME
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log("🔄 Sincronizando estado al volver a Home...");
+      // Sincronizar estado local con global
+      setIsPlaying(globalPlaybackStatus.isPlaying);
+      setCurrentSong(globalPlaybackStatus.currentSong);
+      setCurrentIndex(globalPlaybackStatus.currentIndex);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // 🔥 CLEANUP AL SALIR DE HOME
   useEffect(() => {
     return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
+      // No detenemos la reproducción al salir de Home, solo al cerrar sesión
+      console.log("🏠 Saliendo de Home (reproducción continúa en background)");
     };
-  }, [sound]);
+  }, []);
 
   // RENDERIZAR CADA CANCIÓN
   const renderSongItem = ({ item, index }) => (
@@ -215,9 +279,9 @@ const Home = ({ navigation }) => {
       </View>
       
       <View style={styles.songActions}>
-        {currentSong?.id === item.id ? (
+        {globalPlaybackStatus.currentSong?.id === item.id ? (
           <View style={styles.playingControls}>
-            {isPlaying ? (
+            {globalPlaybackStatus.isPlaying ? (
               <TouchableOpacity onPress={pauseSong} style={styles.controlButton}>
                 <FontAwesome name="pause" size={20} color="#fff" />
               </TouchableOpacity>
@@ -226,7 +290,7 @@ const Home = ({ navigation }) => {
                 <FontAwesome name="play" size={20} color="#fff" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={stopSong} style={styles.controlButton}>
+            <TouchableOpacity onPress={stopCurrentSong} style={styles.controlButton}>
               <FontAwesome name="stop" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -271,7 +335,7 @@ const Home = ({ navigation }) => {
 
   return (
     <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
-      {/* HEADER CON BOTÓN DE PERFIL Y LOGOUT */}
+      {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Mi Biblioteca Musical</Text>
@@ -295,15 +359,17 @@ const Home = ({ navigation }) => {
       </View>
 
       {/* REPRODUCTOR GLOBAL */}
-      {currentSong && (
+      {globalPlaybackStatus.currentSong && (
         <View style={styles.globalPlayer}>
-          <Text style={styles.nowPlaying}>Reproduciendo: {currentSong.title}</Text>
+          <Text style={styles.nowPlaying}>
+            Reproduciendo: {globalPlaybackStatus.currentSong.title}
+          </Text>
           <View style={styles.globalControls}>
             <TouchableOpacity onPress={playPrevious} style={styles.navButton}>
               <FontAwesome name="backward" size={20} color="#fff" />
             </TouchableOpacity>
             
-            {isPlaying ? (
+            {globalPlaybackStatus.isPlaying ? (
               <TouchableOpacity onPress={pauseSong} style={styles.playPauseButton}>
                 <FontAwesome name="pause" size={24} color="#fff" />
               </TouchableOpacity>
@@ -317,11 +383,13 @@ const Home = ({ navigation }) => {
               <FontAwesome name="forward" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.currentArtist}>{currentSong.artist}</Text>
+          <Text style={styles.currentArtist}>
+            {globalPlaybackStatus.currentSong.artist}
+          </Text>
         </View>
       )}
 
-      {/* LISTA DE CANCIONES O ESTADO VACÍO */}
+      {/* LISTA DE CANCIONES */}
       {songs.length === 0 ? (
         <View style={styles.emptyState}>
           <FontAwesome name="music" size={60} color="#8a2be2" />
@@ -340,7 +408,7 @@ const Home = ({ navigation }) => {
         />
       )}
 
-      {/* BOTÓN FLOTANTE PARA AGREGAR CANCIÓN */}
+      {/* BOTÓN AGREGAR CANCIÓN */}
       <TouchableOpacity 
         style={styles.addButton}
         onPress={() => navigation.navigate('AddEditSong')}
@@ -351,6 +419,7 @@ const Home = ({ navigation }) => {
   );
 };
 
+// ESTILOS (se mantienen igual)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
