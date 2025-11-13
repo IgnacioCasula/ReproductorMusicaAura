@@ -8,6 +8,8 @@ import SignUp from '../screens/SignUp';
 import Home from '../screens/Home';
 import AddEditSong from '../screens/AddEditSong';
 import Profile from '../screens/Profile';
+import PlaylistsScreen from '../screens/PlaylistsScreen';
+import PlaylistDetailScreen from '../screens/PlaylistDetailScreen';
 
 const Stack = createStackNavigator();
 
@@ -53,6 +55,28 @@ function Navigation() {
               component={Profile} 
               options={{ 
                 title: 'Mi Perfil',
+                headerStyle: {
+                  backgroundColor: '#1a1a2e',
+                },
+                headerTintColor: '#fff',
+              }} 
+            />
+            <Stack.Screen 
+              name="Playlists" 
+              component={PlaylistsScreen} 
+              options={{ 
+                title: 'Mis Playlists',
+                headerStyle: {
+                  backgroundColor: '#1a1a2e',
+                },
+                headerTintColor: '#fff',
+              }} 
+            />
+            <Stack.Screen 
+              name="PlaylistDetail" 
+              component={PlaylistDetailScreen} 
+              options={{ 
+                title: 'Playlist',
                 headerStyle: {
                   backgroundColor: '#1a1a2e',
                 },

@@ -346,6 +346,14 @@ const Home = ({ navigation }) => {
         
         <View style={styles.headerRight}>
           <TouchableOpacity 
+            style={styles.playlistButton} 
+            onPress={() => navigation.navigate('Playlists')}
+          >
+            <FontAwesome name="list-alt" size={20} color="#fff" />
+          </TouchableOpacity>
+
+
+          <TouchableOpacity 
             style={styles.profileButton} 
             onPress={() => navigation.navigate('Profile')}
           >
@@ -355,6 +363,8 @@ const Home = ({ navigation }) => {
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogOut}>
             <FontAwesome name="sign-out" size={20} color="#fff" />
           </TouchableOpacity>
+
+
         </View>
       </View>
 
