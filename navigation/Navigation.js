@@ -1,4 +1,3 @@
-// miapp/navigation/Navigation.js
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -8,6 +7,7 @@ import Login from '../screens/Login';
 import SignUp from '../screens/SignUp';
 import Home from '../screens/Home';
 import AddEditSong from '../screens/AddEditSong';
+import Profile from '../screens/Profile';
 
 const Stack = createStackNavigator();
 
@@ -30,7 +30,7 @@ function Navigation() {
     <NavigationContainer>
       <Stack.Navigator>
         {isAuthenticated ? (
-          // ✅ USUARIO AUTENTICADO - Pantallas principales
+          // USUARIO AUTENTICADO - Pantallas principales
           <>
             <Stack.Screen 
               name="Home" 
@@ -48,9 +48,20 @@ function Navigation() {
                 headerTintColor: '#fff',
               }} 
             />
+            <Stack.Screen 
+              name="Profile" 
+              component={Profile} 
+              options={{ 
+                title: 'Mi Perfil',
+                headerStyle: {
+                  backgroundColor: '#1a1a2e',
+                },
+                headerTintColor: '#fff',
+              }} 
+            />
           </>
         ) : (
-          // ❌ USUARIO NO AUTENTICADO - Pantallas de auth
+          // USUARIO NO AUTENTICADO - Pantallas de auth
           <>
             <Stack.Screen 
               name="Login" 

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { auth } from '../src/config/firebaseConfig';
+import { auth, db } from '../src/config/firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
-
 
 export default function SignUp({ navigation }) {
   const [firstName, setFirstName] = useState('');
@@ -12,12 +12,16 @@ export default function SignUp({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [age, setAge] = useState('');
+  const [favoriteGenre, setFavoriteGenre] = useState('');
+  const [country, setCountry] = useState('');
+  const [accountType, setAccountType] = useState('Free');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignUp = async () => {
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      Alert.alert("Error", "Todos los campos son obligatorios.");
+      Alert.alert("Error", "Todos los campos obligatorios deben ser llenados.");
       return;
     }
 
@@ -36,9 +40,24 @@ export default function SignUp({ navigation }) {
     }
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Guardar información adicional del usuario en Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        firstName,
+        lastName,
+        email,
+        age: age || null,
+        favoriteGenre: favoriteGenre || null,
+        country: country || null,
+        accountType: accountType || 'Free',
+        createdAt: new Date(),
+        songsCount: 0,
+      });
+
       Alert.alert("Registro exitoso", "Usuario registrado con éxito.");
-      
+      navigation.navigate('Home');
     } catch (error) {
       let errorMessage = "Hubo un problema al registrar el usuario.";
       switch (error.code) {
@@ -70,103 +89,173 @@ export default function SignUp({ navigation }) {
             source={require('../assets/logo.png')} 
             style={styles.logo} 
           />
-          <Text style={styles.appName}>Aura</Text>
+          <Text style={styles.appName}>SoundWave</Text>
           <Text style={styles.subtitle}>Crea tu cuenta</Text>
         </View>
 
         <View style={styles.formContainer}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre</Text>
-            <View style={styles.inputContainer}>
-              <FontAwesome name="user" size={20} color="#8a2be2" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Ingrese su nombre"
-                placeholderTextColor="#888"
-                value={firstName}
-                onChangeText={setFirstName}
-              />
-            </View>
+          {/* NOMBRE */}
+          <Text style={styles.label}>Nombre *</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="user" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ingrese su nombre"
+              placeholderTextColor="#888"
+              value={firstName}
+              onChangeText={setFirstName}
+            />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Apellido</Text>
-            <View style={styles.inputContainer}>
-              <FontAwesome name="user" size={20} color="#8a2be2" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Ingrese su apellido"
-                placeholderTextColor="#888"
-                value={lastName}
-                onChangeText={setLastName}
-              />
-            </View>
+          {/* APELLIDO */}
+          <Text style={styles.label}>Apellido *</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="user" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ingrese su apellido"
+              placeholderTextColor="#888"
+              value={lastName}
+              onChangeText={setLastName}
+            />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Correo electrónico</Text>
-            <View style={styles.inputContainer}>
-              <FontAwesome name="envelope" size={20} color="#8a2be2" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Ingrese su correo"
-                placeholderTextColor="#888"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+          {/* EMAIL */}
+          <Text style={styles.label}>Correo electrónico *</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="envelope" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ingrese su correo"
+              placeholderTextColor="#888"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contraseña</Text>
-            <View style={styles.inputContainer}>
-              <FontAwesome name="lock" size={20} color="#8a2be2" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Ingrese su contraseña"
-                placeholderTextColor="#888"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <FontAwesome 
-                  name={showPassword ? "eye-slash" : "eye"} 
-                  size={20} 
-                  color="#8a2be2" 
-                />
-              </TouchableOpacity>
-            </View>
+          {/* EDAD */}
+          <Text style={styles.label}>Edad</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="calendar" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ingrese su edad"
+              placeholderTextColor="#888"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+            />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirmar Contraseña</Text>
-            <View style={styles.inputContainer}>
-              <FontAwesome name="lock" size={20} color="#8a2be2" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirme su contraseña"
-                placeholderTextColor="#888"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-              />
-              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                <FontAwesome 
-                  name={showConfirmPassword ? "eye-slash" : "eye"} 
-                  size={20} 
-                  color="#8a2be2" 
-                />
-              </TouchableOpacity>
-            </View>
+          {/* GÉNERO MUSICAL FAVORITO */}
+          <Text style={styles.label}>Género Musical Favorito</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="music" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ej: Rock, Pop, Jazz, Clásica"
+              placeholderTextColor="#888"
+              value={favoriteGenre}
+              onChangeText={setFavoriteGenre}
+            />
           </View>
 
+          {/* PAÍS */}
+          <Text style={styles.label}>País</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="globe" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ej: Argentina, México, España"
+              placeholderTextColor="#888"
+              value={country}
+              onChangeText={setCountry}
+            />
+          </View>
+
+          {/* TIPO DE CUENTA */}
+          <Text style={styles.label}>Tipo de Cuenta</Text>
+          <View style={styles.accountTypeContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.accountTypeButton, 
+                accountType === 'Free' && styles.accountTypeButtonActive
+              ]}
+              onPress={() => setAccountType('Free')}
+            >
+              <Text style={[
+                styles.accountTypeText,
+                accountType === 'Free' && styles.accountTypeTextActive
+              ]}>
+                Free
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[
+                styles.accountTypeButton, 
+                accountType === 'Premium' && styles.accountTypeButtonActive
+              ]}
+              onPress={() => setAccountType('Premium')}
+            >
+              <Text style={[
+                styles.accountTypeText,
+                accountType === 'Premium' && styles.accountTypeTextActive
+              ]}>
+                Premium
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* CONTRASEÑA */}
+          <Text style={styles.label}>Contraseña *</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="lock" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Ingrese su contraseña"
+              placeholderTextColor="#888"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <FontAwesome 
+                name={showPassword ? "eye-slash" : "eye"} 
+                size={20} 
+                color="#8a2be2" 
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* CONFIRMAR CONTRASEÑA */}
+          <Text style={styles.label}>Confirmar Contraseña *</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome name="lock" size={20} color="#8a2be2" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirme su contraseña"
+              placeholderTextColor="#888"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+            />
+            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+              <FontAwesome 
+                name={showConfirmPassword ? "eye-slash" : "eye"} 
+                size={20} 
+                color="#8a2be2" 
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* BOTÓN REGISTRARSE */}
           <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-            <Text style={styles.signUpButtonText}>Crear cuenta</Text>
+            <Text style={styles.signUpButtonText}>Registrarse</Text>
           </TouchableOpacity>
 
+          {/* LINK A LOGIN */}
           <TouchableOpacity 
             style={styles.loginLink} 
             onPress={() => navigation.navigate('Login')}
@@ -186,12 +275,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
     padding: 20,
+    paddingTop: 60,
   },
   header: {
     alignItems: 'center',
-    marginTop: 60,
     marginBottom: 40,
   },
   logo: {
@@ -214,9 +302,6 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
   label: {
     fontSize: 16,
     fontWeight: '600',
@@ -232,6 +317,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderWidth: 1,
     borderColor: 'rgba(138, 43, 226, 0.3)',
+    marginBottom: 20,
   },
   icon: {
     marginRight: 10,
@@ -241,6 +327,33 @@ const styles = StyleSheet.create({
     height: 50,
     color: '#fff',
     fontSize: 16,
+  },
+  accountTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  accountTypeButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 43, 226, 0.3)',
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  accountTypeButtonActive: {
+    backgroundColor: '#8a2be2',
+    borderColor: '#8a2be2',
+  },
+  accountTypeText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  accountTypeTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   signUpButton: {
     backgroundColor: '#8a2be2',
@@ -273,3 +386,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+

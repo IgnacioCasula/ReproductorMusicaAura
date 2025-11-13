@@ -18,7 +18,7 @@ const Home = ({ navigation }) => {
   const [currentSong, setCurrentSong] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(-1);
 
-  // 🔥 CARGAR CANCIONES DEL USUARIO
+  // CARGAR CANCIONES DEL USUARIO
   useEffect(() => {
     if (auth.currentUser) {
       const q = query(
@@ -39,28 +39,22 @@ const Home = ({ navigation }) => {
     }
   }, []);
 
-  // 🔥 CALLBACK PARA ACTUALIZACIONES DE REPRODUCCIÓN
+  // CALLBACK PARA ACTUALIZACIONES DE REPRODUCCIÓN
   const onPlaybackStatusUpdate = (status) => {
-    console.log("Status update:", status);
     if (status.didJustFinish) {
-      console.log("Canción terminó, reproduciendo siguiente...");
       setIsPlaying(false);
       
-      // Usar timeout pequeño para evitar conflictos
       setTimeout(() => {
         playNext();
       }, 100);
     }
   };
 
-  // 🔥 FUNCIÓN PLAYSONG CORREGIDA
+  // FUNCIÓN PLAYSONG
   const playSong = async (song, index) => {
     try {
-      console.log(`Reproduciendo: ${song.title}, índice: ${index}`);
-      
       // Limpiar sonido anterior si existe
       if (sound) {
-        console.log("Limpiando sonido anterior...");
         try {
           await sound.unloadAsync();
         } catch (error) {
@@ -88,7 +82,7 @@ const Home = ({ navigation }) => {
     }
   };
 
-  // 🔥 PAUSAR CANCIÓN
+  // PAUSAR CANCIÓN
   const pauseSong = async () => {
     if (sound) {
       try {
@@ -100,7 +94,7 @@ const Home = ({ navigation }) => {
     }
   };
 
-  // 🔥 REANUDAR CANCIÓN
+  // REANUDAR CANCIÓN
   const resumeSong = async () => {
     if (sound) {
       try {
@@ -112,7 +106,7 @@ const Home = ({ navigation }) => {
     }
   };
 
-  // 🔥 DETENER CANCIÓN
+  // DETENER CANCIÓN
   const stopSong = async () => {
     if (sound) {
       try {
@@ -129,7 +123,7 @@ const Home = ({ navigation }) => {
     }
   };
 
-  // 🔥 CANCIÓN ANTERIOR
+  // CANCIÓN ANTERIOR
   const playPrevious = async () => {
     if (songs.length === 0) return;
     
@@ -143,7 +137,7 @@ const Home = ({ navigation }) => {
     await playSong(songs[newIndex], newIndex);
   };
 
-  // 🔥 SIGUIENTE CANCIÓN
+  // SIGUIENTE CANCIÓN
   const playNext = async () => {
     if (songs.length === 0) {
       await stopSong();
@@ -160,7 +154,7 @@ const Home = ({ navigation }) => {
     await playSong(songs[newIndex], newIndex);
   };
 
-  // 🔥 ELIMINAR CANCIÓN
+  // ELIMINAR CANCIÓN
   const deleteSong = (song) => {
     Alert.alert(
       'Eliminar Canción',
@@ -188,7 +182,7 @@ const Home = ({ navigation }) => {
     );
   };
 
-  // 🔥 CERRAR SESIÓN
+  // CERRAR SESIÓN
   const handleLogOut = async () => {
     try {
       await stopSong();
@@ -200,17 +194,16 @@ const Home = ({ navigation }) => {
     }
   };
 
-  // 🔥 CLEANUP AL DESMONTAR EL COMPONENTE
+  // CLEANUP AL DESMONTAR EL COMPONENTE
   useEffect(() => {
     return () => {
       if (sound) {
-        console.log("Cleanup: liberando sonido...");
         sound.unloadAsync();
       }
     };
   }, [sound]);
 
-  // 🔥 RENDERIZAR CADA CANCIÓN
+  // RENDERIZAR CADA CANCIÓN
   const renderSongItem = ({ item, index }) => (
     <View style={styles.songCard}>
       <View style={styles.songInfo}>
@@ -278,6 +271,7 @@ const Home = ({ navigation }) => {
 
   return (
     <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
+      {/* HEADER CON BOTÓN DE PERFIL Y LOGOUT */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Mi Biblioteca Musical</Text>
@@ -286,11 +280,21 @@ const Home = ({ navigation }) => {
           </Text>
         </View>
         
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogOut}>
-          <FontAwesome name="sign-out" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.profileButton} 
+            onPress={() => navigation.navigate('Profile')}
+          >
+            <FontAwesome name="user" size={20} color="#fff" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogOut}>
+            <FontAwesome name="sign-out" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {/* REPRODUCTOR GLOBAL */}
       {currentSong && (
         <View style={styles.globalPlayer}>
           <Text style={styles.nowPlaying}>Reproduciendo: {currentSong.title}</Text>
@@ -317,6 +321,7 @@ const Home = ({ navigation }) => {
         </View>
       )}
 
+      {/* LISTA DE CANCIONES O ESTADO VACÍO */}
       {songs.length === 0 ? (
         <View style={styles.emptyState}>
           <FontAwesome name="music" size={60} color="#8a2be2" />
@@ -335,6 +340,7 @@ const Home = ({ navigation }) => {
         />
       )}
 
+      {/* BOTÓN FLOTANTE PARA AGREGAR CANCIÓN */}
       <TouchableOpacity 
         style={styles.addButton}
         onPress={() => navigation.navigate('AddEditSong')}
@@ -345,7 +351,6 @@ const Home = ({ navigation }) => {
   );
 };
 
-// Los estilos se mantienen igual que antes...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -371,6 +376,11 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -381,11 +391,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#b0b0ff',
   },
+  profileButton: {
+    backgroundColor: 'rgba(138, 43, 226, 0.3)',
+    padding: 12,
+    borderRadius: 20,
+  },
   logoutButton: {
     backgroundColor: 'rgba(255, 69, 58, 0.3)',
     padding: 12,
     borderRadius: 20,
-    marginLeft: 10,
   },
   globalPlayer: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
